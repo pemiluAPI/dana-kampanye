@@ -3,7 +3,8 @@ class CreateCampaignFinance < ActiveRecord::Migration
     create_table :campaign_finances do |t|
       t.string :periode
       t.integer :partai_id
-      t.integer :role_id      
+      t.string :nama_partai
+      t.integer :role_id
       t.string :nama
       t.string :calon_id
       t.string :mata_uang

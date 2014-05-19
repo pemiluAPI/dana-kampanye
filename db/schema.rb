@@ -11,11 +11,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140512040034) do
+ActiveRecord::Schema.define(version: 20140519073157) do
 
   create_table "campaign_finances", force: true do |t|
     t.string  "periode"
     t.integer "partai_id"
+    t.string  "nama_partai"
     t.integer "role_id"
     t.string  "nama"
     t.string  "calon_id"
@@ -28,6 +29,9 @@ ActiveRecord::Schema.define(version: 20140512040034) do
     t.string  "jumlah"
     t.string  "keterangan"
   end
+
+  add_index "campaign_finances", ["calon_id"], name: "index_campaign_finances_on_calon_id", using: :btree
+  add_index "campaign_finances", ["nama"], name: "index_campaign_finances_on_nama", using: :btree
 
   create_table "roles", force: true do |t|
     t.string "nama_pendek"
