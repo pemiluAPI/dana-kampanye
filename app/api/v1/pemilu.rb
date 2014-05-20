@@ -2,7 +2,7 @@ module CampaignFinanceHelpers
   
   def get_all_by_calon_and_periode(campaignfinance, periode, field)
     campaignfinances = CampaignFinance.select("#{field}").where("calon_id = ? and nama = ?", campaignfinance.calon_id, campaignfinance.nama)
-    campaignfinances = campaignfinances.where("periode in (?)", periode) unless periode.nil?   
+    campaignfinances = campaignfinances.where("periode in (?)", periode) unless periode.nil?
     campaignfinances
   end
   
@@ -45,7 +45,7 @@ module Pemilu
     resource :contributions do
       helpers CampaignFinanceHelpers
       
-      desc "Return all Campaign Finances"      
+      desc "Return all Campaign Finances"
       get do
         contributions = Array.new
         periods = params[:periode].split(',') unless params[:periode].nil?
@@ -62,10 +62,10 @@ module Pemilu
         end
 
         # Set default limit
-        limit = (params[:limit].to_i == 0 || params[:limit].empty?) ? 100 : params[:limit]
+        limit = (params[:limit].to_i == 0 || params[:limit].empty?) ? 2000 : params[:limit]
         
         search = params[:periode].nil? ? ["nama LIKE ?", "%#{params[:nama]}%"] : ["nama LIKE ? and periode in (?)", "%#{params[:nama]}%", periods]
-                
+
         cfinances = CampaignFinance.includes(:role)
                                   .where(conditions)
                                   .where(search)
@@ -73,8 +73,34 @@ module Pemilu
                                   .offset(params[:offset])
                                   .group(:calon_id, :nama)
                                   .order(:id)
-                                  
-        cfinances.each do |campaignfinance|
+        unless periods.nil?
+          cfinances.each do |campaignfinance|
+            periode = periods.count < 2 ? campaignfinance.periode : calculate_periode(campaignfinance, periods, 'periode')
+            uang = periods.count < 2 ? campaignfinance.uang : sum_uang(campaignfinance, periods, 'uang')
+            nilai_barang = periods.count < 2 ? campaignfinance.nilai_barang : sum_nilai_barang(campaignfinance, periods, 'nilai_barang')
+            nilai_jasa = periods.count < 2 ? campaignfinance.nilai_jasa : sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa')
+            jumlah = periods.count < 2 ? campaignfinance.jumlah : sum_jumlah(campaignfinance, periods, 'jumlah')
+            contributions << {
+              periode: periode,
+              partai: {
+                id: campaignfinance.partai_id,
+                nama: campaignfinance.nama_partai
+              },
+              role: campaignfinance.role.nama_lengkap,
+              nama: campaignfinance.nama,
+              id_calon: campaignfinance.calon_id,
+              mata_uang: campaignfinance.mata_uang,
+              uang: uang,
+              nilai_barang: nilai_barang,
+              unit_barang: campaignfinance.unit_barang,
+              nilai_jasa: nilai_jasa,
+              bentuk_jasa: campaignfinance.bentuk_jasa,
+              jumlah: jumlah,
+              keterangan: campaignfinance.keterangan
+            }
+          end
+        else
+          cfinances.each do |campaignfinance|
             contributions << {
               periode: calculate_periode(campaignfinance, periods, 'periode'),
               partai: {
@@ -93,6 +119,7 @@ module Pemilu
               jumlah: sum_jumlah(campaignfinance, periods, 'jumlah'),
               keterangan: campaignfinance.keterangan
             }
+          end
         end
         {
           results: {
@@ -115,32 +142,64 @@ module Pemilu
           campaignfinance = CampaignFinance.where("calon_id = ?", params[:id])
           campaignfinance = campaignfinance.where("periode in (?)", periods) unless params[:periode].nil?
           campaignfinance = campaignfinance.first
-          {
-            results: {
-              count: 1,
-              total: 1,
-              contributions: [{
-                periode: calculate_periode(campaignfinance, periods, 'periode'),
-                partai: {
-                  id: campaignfinance.partai_id,
-                  nama: campaignfinance.nama_partai
-                },
-                role: campaignfinance.role.nama_lengkap,
-                nama: campaignfinance.nama,
-                id_calon: campaignfinance.calon_id,
-                mata_uang: campaignfinance.mata_uang,
-                uang: sum_uang(campaignfinance, periods, 'uang'),
-                nilai_barang: sum_nilai_barang(campaignfinance, periods, 'nilai_barang'),
-                unit_barang: campaignfinance.unit_barang,
-                nilai_jasa: sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa'),
-                bentuk_jasa: campaignfinance.bentuk_jasa,
-                jumlah: sum_jumlah(campaignfinance, periods, 'jumlah'),
-                keterangan: campaignfinance.keterangan
-              }]
+          unless periods.nil?
+            periode = periods.count < 2 ? campaignfinance.periode : calculate_periode(campaignfinance, periods, 'periode')
+            uang = periods.count < 2 ? campaignfinance.uang : sum_uang(campaignfinance, periods, 'uang')
+            nilai_barang = periods.count < 2 ? campaignfinance.nilai_barang : sum_nilai_barang(campaignfinance, periods, 'nilai_barang')
+            nilai_jasa = periods.count < 2 ? campaignfinance.nilai_jasa : sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa')
+            jumlah = periods.count < 2 ? campaignfinance.jumlah : sum_jumlah(campaignfinance, periods, 'jumlah')
+            {
+              results: {
+                count: 1,
+                total: 1,
+                contributions: [{
+                  periode: periode,
+                  partai: {
+                    id: campaignfinance.partai_id,
+                    nama: campaignfinance.nama_partai
+                  },
+                  role: campaignfinance.role.nama_lengkap,
+                  nama: campaignfinance.nama,
+                  id_calon: campaignfinance.calon_id,
+                  mata_uang: campaignfinance.mata_uang,
+                  uang: uang,
+                  nilai_barang: nilai_barang,
+                  unit_barang: campaignfinance.unit_barang,
+                  nilai_jasa: nilai_jasa,
+                  bentuk_jasa: campaignfinance.bentuk_jasa,
+                  jumlah: jumlah,
+                  keterangan: campaignfinance.keterangan
+                }]
+              }
             }
-          }
+          else
+            {
+              results: {
+                count: 1,
+                total: 1,
+                contributions: [{
+                  periode: calculate_periode(campaignfinance, periods, 'periode'),
+                  partai: {
+                    id: campaignfinance.partai_id,
+                    nama: campaignfinance.nama_partai
+                  },
+                  role: campaignfinance.role.nama_lengkap,
+                  nama: campaignfinance.nama,
+                  id_calon: campaignfinance.calon_id,
+                  mata_uang: campaignfinance.mata_uang,
+                  uang: sum_uang(campaignfinance, periods, 'uang'),
+                  nilai_barang: sum_nilai_barang(campaignfinance, periods, 'nilai_barang'),
+                  unit_barang: campaignfinance.unit_barang,
+                  nilai_jasa: sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa'),
+                  bentuk_jasa: campaignfinance.bentuk_jasa,
+                  jumlah: sum_jumlah(campaignfinance, periods, 'jumlah'),
+                  keterangan: campaignfinance.keterangan
+                }]
+              }
+            }
+          end
         end
       end
-    end    
+    end
   end
 end
