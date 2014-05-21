@@ -1,7 +1,7 @@
 module CampaignFinanceHelpers
   
   def get_all_by_calon_and_periode(campaignfinance, periode, field)
-    campaignfinances = CampaignFinance.select("#{field}").where("calon_id = ? and nama = ?", campaignfinance.calon_id, campaignfinance.nama)
+    campaignfinances = CampaignFinance.select(field).where("calon_id = ? and nama = ?", campaignfinance.calon_id, campaignfinance.nama)
     campaignfinances = campaignfinances.where("periode in (?)", periode) unless periode.nil?
     campaignfinances
   end
