@@ -11,6 +11,11 @@ module CampaignFinanceHelpers
     cfinance.sum(:uang)
   end
   
+  def sum_unit_barang(campaignfinance, periode, unit_barang)
+    cfinance = get_all_by_calon_and_periode(campaignfinance, periode, unit_barang)
+    cfinance.sum(:unit_barang)
+  end
+  
   def sum_nilai_barang(campaignfinance, periode, nilai_barang)
     cfinance = get_all_by_calon_and_periode(campaignfinance, periode, nilai_barang)
     cfinance.sum(:nilai_barang)
@@ -34,6 +39,20 @@ module CampaignFinanceHelpers
     end
     periods
   end
+  
+  def get_totals(contributions)
+    total_uang = total_nilai_barang = total_unit_barang = total_nilai_jasa = total_jumlah = 0
+    contributions.each do |contribution|
+      total_uang += contribution[:uang]
+      total_nilai_barang += contribution[:nilai_barang]
+      total_unit_barang += contribution[:unit_barang]
+      total_nilai_jasa += contribution[:nilai_jasa]
+      total_jumlah += contribution[:jumlah]
+    end
+    {:uang => total_uang, :nilai_barang => total_nilai_barang, :unit_barang => total_unit_barang,
+      :nilai_jasa => total_nilai_jasa, :jumlah => total_jumlah }    
+  end
+  
 end
 
 module Pemilu
@@ -77,6 +96,7 @@ module Pemilu
           cfinances.each do |campaignfinance|
             periode = periods.count < 2 ? campaignfinance.periode : calculate_periode(campaignfinance, periods, 'periode')
             uang = periods.count < 2 ? campaignfinance.uang : sum_uang(campaignfinance, periods, 'uang')
+            unit_barang = periods.count < 2 ? campaignfinance.unit_barang : sum_unit_barang(campaignfinance, periods, 'unit_barang')
             nilai_barang = periods.count < 2 ? campaignfinance.nilai_barang : sum_nilai_barang(campaignfinance, periods, 'nilai_barang')
             nilai_jasa = periods.count < 2 ? campaignfinance.nilai_jasa : sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa')
             jumlah = periods.count < 2 ? campaignfinance.jumlah : sum_jumlah(campaignfinance, periods, 'jumlah')
@@ -90,12 +110,12 @@ module Pemilu
               nama: campaignfinance.nama,
               id_calon: campaignfinance.calon_id,
               mata_uang: campaignfinance.mata_uang,
-              uang: uang,
-              nilai_barang: nilai_barang,
-              unit_barang: campaignfinance.unit_barang,
-              nilai_jasa: nilai_jasa,
+              uang: uang.to_i,
+              nilai_barang: nilai_barang.to_i,
+              unit_barang: unit_barang.to_i,
+              nilai_jasa: nilai_jasa.to_i,
               bentuk_jasa: campaignfinance.bentuk_jasa,
-              jumlah: jumlah,
+              jumlah: jumlah.to_i,
               keterangan: campaignfinance.keterangan
             }
           end
@@ -113,21 +133,39 @@ module Pemilu
               mata_uang: campaignfinance.mata_uang,
               uang: sum_uang(campaignfinance, periods, 'uang'),
               nilai_barang: sum_nilai_barang(campaignfinance, periods, 'nilai_barang'),
-              unit_barang: campaignfinance.unit_barang,
+              unit_barang: sum_unit_barang(campaignfinance, periods, 'unit_barang'),
               nilai_jasa: sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa'),
               bentuk_jasa: campaignfinance.bentuk_jasa,
               jumlah: sum_jumlah(campaignfinance, periods, 'jumlah'),
               keterangan: campaignfinance.keterangan
             }
           end
-        end
-        {
-          results: {
-            count: contributions.count,
-            total: CampaignFinance.includes(:role).where(conditions).where(search).group(:calon_id, :nama).count.count,
-            contributions: contributions
+        end        
+        if params[:total].to_s.downcase == "true"
+          grandtotal = get_totals(contributions)
+          {
+            results: {
+              count: contributions.count,
+              total: CampaignFinance.includes(:role).where(conditions).where(search).group(:calon_id, :nama).count.count,
+              contributions: contributions,
+              value_totals: {
+                uang: grandtotal[:uang],
+                nilai_barang: grandtotal[:nilai_barang],
+                unit_barang: grandtotal[:unit_barang],
+                nilai_jasa: grandtotal[:nilai_jasa],
+                jumlah: grandtotal[:jumlah]
+              }
+            }
           }
-        }
+        else
+          {
+            results: {
+              count: contributions.count,
+              total: CampaignFinance.includes(:role).where(conditions).where(search).group(:calon_id, :nama).count.count,
+              contributions: contributions
+            }
+          }
+        end
       end
       
       desc "Return the Contributions for a single candidate"
@@ -145,6 +183,7 @@ module Pemilu
           unless periods.nil?
             periode = periods.count < 2 ? campaignfinance.periode : calculate_periode(campaignfinance, periods, 'periode')
             uang = periods.count < 2 ? campaignfinance.uang : sum_uang(campaignfinance, periods, 'uang')
+            unit_barang = periods.count < 2 ? campaignfinance.unit_barang : sum_unit_barang(campaignfinance, periods, 'unit_barang')
             nilai_barang = periods.count < 2 ? campaignfinance.nilai_barang : sum_nilai_barang(campaignfinance, periods, 'nilai_barang')
             nilai_jasa = periods.count < 2 ? campaignfinance.nilai_jasa : sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa')
             jumlah = periods.count < 2 ? campaignfinance.jumlah : sum_jumlah(campaignfinance, periods, 'jumlah')
@@ -162,12 +201,12 @@ module Pemilu
                   nama: campaignfinance.nama,
                   id_calon: campaignfinance.calon_id,
                   mata_uang: campaignfinance.mata_uang,
-                  uang: uang,
-                  nilai_barang: nilai_barang,
-                  unit_barang: campaignfinance.unit_barang,
-                  nilai_jasa: nilai_jasa,
+                  uang: uang.to_i,
+                  nilai_barang: nilai_barang.to_i,
+                  unit_barang: unit_barang.to_i,
+                  nilai_jasa: nilai_jasa.to_i,
                   bentuk_jasa: campaignfinance.bentuk_jasa,
-                  jumlah: jumlah,
+                  jumlah: jumlah.to_i,
                   keterangan: campaignfinance.keterangan
                 }]
               }
@@ -189,7 +228,7 @@ module Pemilu
                   mata_uang: campaignfinance.mata_uang,
                   uang: sum_uang(campaignfinance, periods, 'uang'),
                   nilai_barang: sum_nilai_barang(campaignfinance, periods, 'nilai_barang'),
-                  unit_barang: campaignfinance.unit_barang,
+                  unit_barang: sum_unit_barang(campaignfinance, periods, 'unit_barang'),
                   nilai_jasa: sum_nilai_jasa(campaignfinance, periods, 'nilai_jasa'),
                   bentuk_jasa: campaignfinance.bentuk_jasa,
                   jumlah: sum_jumlah(campaignfinance, periods, 'jumlah'),
