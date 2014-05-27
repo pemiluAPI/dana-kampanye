@@ -68,26 +68,34 @@ module Pemilu
       get do
         contributions = Array.new
         periods = params[:periode].split(',') unless params[:periode].nil?
+        roles = params[:role].split(',') unless params[:role].nil?
         
         # Prepare conditions based on params
         valid_params = {
           lembaga: 'lembaga',
           partai: 'partai_id',
-          role: 'roles.nama_pendek'
+          tahun: 'tahun'
         }
         conditions = Hash.new
         valid_params.each_pair do |key, value|
           conditions[value.to_sym] = params[key.to_sym] unless params[key.to_sym].blank?
         end
+        
+        # Set default year
+        conditions[:tahun] = params[:tahun] || 2014
 
         # Set default limit
-        limit = (params[:limit].to_i == 0 || params[:limit].empty?) ? 2000 : params[:limit]
+        limit = (params[:limit].to_i == 0 || params[:limit].empty?) ? 1000 : params[:limit]
         
         search = params[:periode].nil? ? ["nama LIKE ?", "%#{params[:nama]}%"] : ["nama LIKE ? and periode in (?)", "%#{params[:nama]}%", periods]
+        
+        roles_search = ["roles.nama_pendek in (?)", roles] unless params[:role].nil?
 
         cfinances = CampaignFinance.includes(:role)
                                   .where(conditions)
                                   .where(search)
+                                  .where(roles_search)
+                                  .references(:role)
                                   .limit(limit)
                                   .offset(params[:offset])
                                   .group(:calon_id, :nama)
@@ -146,7 +154,7 @@ module Pemilu
           {
             results: {
               count: contributions.count,
-              total: CampaignFinance.includes(:role).where(conditions).where(search).group(:calon_id, :nama).count.count,
+              total: CampaignFinance.includes(:role).where(conditions).where(search).where(roles_search).references(:role).group(:calon_id, :nama).count.count,
               contributions: contributions,
               value_totals: {
                 uang: grandtotal[:uang],
@@ -161,7 +169,7 @@ module Pemilu
           {
             results: {
               count: contributions.count,
-              total: CampaignFinance.includes(:role).where(conditions).where(search).group(:calon_id, :nama).count.count,
+              total: CampaignFinance.includes(:role).where(conditions).where(search).where(roles_search).references(:role).group(:calon_id, :nama).count.count,
               contributions: contributions
             }
           }

@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140519073157) do
+ActiveRecord::Schema.define(version: 20140527061855) do
 
   create_table "campaign_finances", force: true do |t|
     t.string  "periode"
@@ -28,6 +28,8 @@ ActiveRecord::Schema.define(version: 20140519073157) do
     t.string  "bentuk_jasa"
     t.string  "jumlah"
     t.string  "keterangan"
+    t.string  "lembaga"
+    t.integer "tahun"
   end
 
   add_index "campaign_finances", ["calon_id"], name: "index_campaign_finances_on_calon_id", using: :btree
