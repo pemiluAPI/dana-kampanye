@@ -85,7 +85,7 @@ module Pemilu
         conditions[:tahun] = params[:tahun] || 2014
 
         # Set default limit
-        limit = (params[:limit].to_i == 0 || params[:limit].empty?) ? 100 : params[:limit]
+        limit = (params[:limit].to_i == 0 || params[:limit].empty?) ? 1000 : params[:limit]
         
         search = params[:periode].nil? ? ["nama LIKE ?", "%#{params[:nama]}%"] : ["nama LIKE ? and periode in (?)", "%#{params[:nama]}%", periods]
         
